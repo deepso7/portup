@@ -46,8 +46,8 @@ Issues live in this repo's GitHub Issues (`deepso7/portup`), managed via the `gh
 
 ### Triage labels
 
-Default label vocabulary — each canonical role maps to a label of the same name. See `docs/agents/triage-labels.md`.
+Default label vocabulary; each canonical role maps to a label of the same name. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
-Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
