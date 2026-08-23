@@ -2,7 +2,9 @@ import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
-import { Effect } from "effect";
+import { BunRuntime, BunServices } from "@effect/platform-bun";
+import { Effect, Option } from "effect";
+import { Argument, Command, Flag } from "effect/unstable/cli";
 
 import { clientLayer, PortupClient } from "./client.ts";
 import type { RemoveResult, ServiceList } from "./client.ts";
@@ -12,10 +14,14 @@ import type { Service } from "./service.ts";
 
 const VERSION = "0.0.1";
 
-interface Options {
-  command: string[];
+interface RuntimeOptions {
   json: boolean;
   port: number;
+}
+
+interface RuntimeFlags {
+  json: boolean;
+  port: Option.Option<number>;
 }
 
 type JsonOutput =
@@ -24,52 +30,45 @@ type JsonOutput =
   | ServiceList
   | Readonly<{ address: string }>;
 
+const runtimeFlags = {
+  json: Flag.boolean("json").pipe(
+    Flag.withDescription("Print JSON only"),
+    Flag.withDefault(false)
+  ),
+  port: Flag.integer("port").pipe(
+    Flag.withDescription("Daemon port (default: 4700, env: PORTUP_PORT)"),
+    Flag.optional
+  ),
+};
+
 const invalidPort = () =>
   new PortupFailure({
     code: "invalid_port",
     message: "port must be an integer between 1 and 65535",
   });
 
-const readPort = (arguments_: string[]) => {
-  let portText = process.env.PORTUP_PORT ?? "4700";
-  for (let index = 0; index < arguments_.length; index += 1) {
-    const argument = arguments_[index];
-    if (argument === "--port") {
-      const value = arguments_[index + 1];
-      if (value === undefined) {
+const resolveOptions = (
+  flags: RuntimeFlags
+): Effect.Effect<RuntimeOptions, PortupFailure> =>
+  Effect.try({
+    catch: (error) =>
+      error instanceof PortupFailure
+        ? error
+        : new PortupFailure({
+            code: "internal_error",
+            message: error instanceof Error ? error.message : "PortUp failed",
+          }),
+    try: () => {
+      const portText = process.env.PORTUP_PORT ?? "4700";
+      const port = Option.isSome(flags.port)
+        ? flags.port.value
+        : Number(portText);
+      if (!Number.isInteger(port) || port < 1 || port > 65_535) {
         throw invalidPort();
       }
-      portText = value;
-      index += 1;
-    } else if (argument?.startsWith("--port=")) {
-      portText = argument.slice("--port=".length);
-    }
-  }
-
-  const port = Number(portText);
-  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-    throw invalidPort();
-  }
-  return port;
-};
-
-const parseArguments = (arguments_: string[]): Options => {
-  const port = readPort(arguments_);
-  let json = false;
-  const command: string[] = [];
-
-  for (let index = 0; index < arguments_.length; index += 1) {
-    const argument = arguments_[index];
-    if (argument === "--json") {
-      json = true;
-    } else if (argument === "--port") {
-      index += 1;
-    } else if (argument !== undefined && !argument.startsWith("--port=")) {
-      command.push(argument);
-    }
-  }
-  return { command, json, port };
-};
+      return { json: flags.json, port };
+    },
+  });
 
 const databasePath = () => {
   if (process.env.PORTUP_DB_PATH) {
@@ -95,104 +94,6 @@ const formatServices = ({ services }: ServiceList) =>
 const print = (json: boolean, value: JsonOutput, human: string) =>
   output(json ? JSON.stringify(value) : human);
 
-const helpText = () => `PortUp ${VERSION}
-
-Usage:
-  portup daemon
-  portup add <name> <url>
-  portup remove <name>
-  portup status [name]
-
-Options:
-  --json         Print JSON only
-  --port <port>  Daemon port (default: 4700, env: PORTUP_PORT)
-  --help         Print help
-  --version      Print version`;
-
-const waitForSignal = () =>
-  Effect.async<null>((resume) => {
-    const stop = () => resume(Effect.succeed(null));
-    process.once("SIGINT", stop);
-    process.once("SIGTERM", stop);
-    return Effect.sync(() => {
-      process.off("SIGINT", stop);
-      process.off("SIGTERM", stop);
-    });
-  });
-
-const runDaemon = ({ json, port }: Options) =>
-  Effect.acquireUseRelease(
-    Effect.try({
-      catch: (error) =>
-        new PortupFailure({
-          code: "internal_error",
-          message: error instanceof Error ? error.message : "PortUp failed",
-        }),
-      try: () => {
-        const database = databasePath();
-        mkdirSync(path.dirname(database), { recursive: true });
-        return createDaemon(database, port);
-      },
-    }),
-    (daemon) =>
-      Effect.gen(function* runForegroundDaemon() {
-        yield* print(
-          json,
-          { address: `127.0.0.1:${daemon.port}` },
-          `PortUp daemon listening on http://127.0.0.1:${daemon.port}`
-        );
-        yield* waitForSignal();
-      }),
-    (daemon) => Effect.promise(() => daemon.stop(true))
-  );
-
-const run = (options: Options) => {
-  const [name, ...arguments_] = options.command;
-  if (name === "--help" || name === "help") {
-    return output(helpText());
-  }
-  if (name === "--version") {
-    return output(VERSION);
-  }
-  if (name === "daemon" && arguments_.length === 0) {
-    return runDaemon(options);
-  }
-
-  return Effect.gen(function* runCommand() {
-    const client = yield* PortupClient;
-    const [first, second] = arguments_;
-    if (name === "add" && first !== undefined && second !== undefined) {
-      const service = yield* client.add(first, second);
-      yield* print(
-        options.json,
-        service,
-        `Added ${service.name} at ${service.localUrl}`
-      );
-      return;
-    }
-    if (name === "remove" && arguments_.length === 1 && first !== undefined) {
-      const removed = yield* client.remove(first);
-      yield* print(options.json, removed, `Removed ${removed.name}`);
-      return;
-    }
-    if (name === "status" && arguments_.length === 1 && first !== undefined) {
-      const service = yield* client.status(first);
-      yield* print(options.json, service, formatService(service));
-      return;
-    }
-    if (name === "status" && arguments_.length === 0) {
-      const services = yield* client.list();
-      yield* print(options.json, services, formatServices(services));
-      return;
-    }
-
-    return yield* new PortupFailure({
-      code: "invalid_arguments",
-      message: "invalid command; run 'portup --help' for usage",
-    });
-  });
-};
-
 const handleFailure = (json: boolean) => (error: PortupFailure) =>
   Effect.sync(() => {
     if (json) {
@@ -205,27 +106,140 @@ const handleFailure = (json: boolean) => (error: PortupFailure) =>
     process.exitCode = 1;
   });
 
-const main = async () => {
-  const arguments_ = process.argv.slice(2);
-  const json = arguments_.includes("--json");
-  const program = Effect.try({
-    catch: (error) =>
-      error instanceof PortupFailure
-        ? error
-        : new PortupFailure({
+const runHandled = <A>(
+  options: RuntimeOptions,
+  program: Effect.Effect<A, PortupFailure, PortupClient>
+) =>
+  program.pipe(
+    Effect.provide(clientLayer(options.port)),
+    Effect.matchEffect({
+      onFailure: handleFailure(options.json),
+      onSuccess: Effect.succeed,
+    })
+  );
+
+const portup = Command.make("portup").pipe(
+  Command.withSharedFlags(runtimeFlags),
+  Command.withDescription("Share local services through stable public URLs")
+);
+
+const withRuntimeOptions = <A>(
+  run: (
+    options: RuntimeOptions
+  ) => Effect.Effect<A, PortupFailure, PortupClient>
+) =>
+  Effect.gen(function* resolveCommandOptions() {
+    const flags = yield* portup;
+    const options = yield* resolveOptions(flags);
+    yield* runHandled(options, run(options));
+  });
+
+const daemon = Command.make("daemon", {}, () =>
+  withRuntimeOptions((options) =>
+    Effect.acquireUseRelease(
+      Effect.try({
+        catch: (error) =>
+          new PortupFailure({
             code: "internal_error",
             message: error instanceof Error ? error.message : "PortUp failed",
           }),
-    try: () => parseArguments(arguments_),
-  }).pipe(
-    Effect.flatMap((options) =>
-      run(options).pipe(Effect.provide(clientLayer(options.port)))
+        try: () => {
+          const database = databasePath();
+          mkdirSync(path.dirname(database), { recursive: true });
+          return createDaemon(database, options.port);
+        },
+      }),
+      (server) =>
+        print(
+          options.json,
+          { address: `127.0.0.1:${server.port}` },
+          `PortUp daemon listening on http://127.0.0.1:${server.port}`
+        ).pipe(Effect.andThen(Effect.never)),
+      (server) => Effect.promise(() => server.stop(true))
+    )
+  )
+).pipe(Command.withDescription("Run the local daemon in the foreground"));
+
+const add = Command.make(
+  "add",
+  {
+    name: Argument.string("name").pipe(
+      Argument.withDescription("Service name")
     ),
-    Effect.catchAll(handleFailure(json))
-  );
-  await Effect.runPromise(program);
-};
+    url: Argument.string("url").pipe(
+      Argument.withDescription("Local HTTP URL")
+    ),
+  },
+  ({ name, url }) =>
+    withRuntimeOptions((options) =>
+      Effect.gen(function* addService() {
+        const client = yield* PortupClient;
+        const service = yield* client.add(name, url);
+        yield* print(
+          options.json,
+          service,
+          `Added ${service.name} at ${service.localUrl}`
+        );
+      })
+    )
+).pipe(Command.withDescription("Register a local service"));
+
+const remove = Command.make(
+  "remove",
+  {
+    name: Argument.string("name").pipe(
+      Argument.withDescription("Service name")
+    ),
+  },
+  ({ name }) =>
+    withRuntimeOptions((options) =>
+      Effect.gen(function* removeService() {
+        const client = yield* PortupClient;
+        const removed = yield* client.remove(name);
+        yield* print(options.json, removed, `Removed ${removed.name}`);
+      })
+    )
+).pipe(Command.withDescription("Remove a registered service"));
+
+const status = Command.make(
+  "status",
+  {
+    name: Argument.string("name").pipe(
+      Argument.withDescription("Service name"),
+      Argument.optional
+    ),
+  },
+  ({ name }) =>
+    withRuntimeOptions((options) =>
+      Effect.gen(function* showStatus() {
+        const client = yield* PortupClient;
+        if (Option.isSome(name)) {
+          const service = yield* client.status(name.value);
+          yield* print(options.json, service, formatService(service));
+        } else {
+          const services = yield* client.list();
+          yield* print(options.json, services, formatServices(services));
+        }
+      })
+    )
+).pipe(Command.withDescription("Show one service or list all services"));
+
+const command = portup.pipe(
+  Command.withSubcommands([daemon, add, remove, status])
+);
+
+const cli = Command.run(command, { version: VERSION });
 
 if (import.meta.main) {
-  await main();
+  cli.pipe(
+    Effect.provide(BunServices.layer),
+    Effect.matchEffect({
+      onFailure: () =>
+        Effect.sync(() => {
+          process.exitCode = 1;
+        }),
+      onSuccess: Effect.succeed,
+    }),
+    BunRuntime.runMain({ disableErrorReporting: true })
+  );
 }

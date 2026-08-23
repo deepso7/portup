@@ -4,12 +4,12 @@ export const ServiceSchema = Schema.Struct({
   checkedAt: Schema.NullOr(Schema.String),
   localUrl: Schema.String,
   name: Schema.String,
-  originStatus: Schema.NullOr(Schema.Literal("online", "offline")),
-  publicStatus: Schema.Literal("reachable", "unknown", "unreachable"),
+  originStatus: Schema.NullOr(Schema.Literals(["online", "offline"])),
+  publicStatus: Schema.Literals(["reachable", "unknown", "unreachable"]),
   publicUrl: Schema.NullOr(Schema.String),
   shared: Schema.Boolean,
   tunnelStatus: Schema.NullOr(
-    Schema.Literal("connected", "connecting", "error")
+    Schema.Literals(["connected", "connecting", "error"])
   ),
 });
 

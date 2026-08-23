@@ -29,10 +29,10 @@ export interface PortupClientService {
   readonly status: (name: string) => Effect.Effect<Service, PortupFailure>;
 }
 
-export class PortupClient extends Context.Tag("@portup/PortupClient")<
+export class PortupClient extends Context.Service<
   PortupClient,
   PortupClientService
->() {}
+>()("@portup/PortupClient") {}
 
 const invalidResponse = (message: string) =>
   new PortupFailure({ code: "invalid_daemon_response", message });
@@ -40,7 +40,7 @@ const invalidResponse = (message: string) =>
 export const clientLayer = (port: number) => {
   const address = `http://127.0.0.1:${port}`;
   const request = <T>(
-    schema: Schema.Schema<T>,
+    schema: Schema.ConstraintDecoder<T, never>,
     path: string,
     init?: RequestInit
   ) =>
@@ -64,13 +64,13 @@ export const clientLayer = (port: number) => {
       ),
       Effect.flatMap(({ body, response }) => {
         if (response.ok) {
-          return Schema.decodeUnknown(schema)(body).pipe(
+          return Schema.decodeUnknownEffect(schema)(body).pipe(
             Effect.mapError(() =>
               invalidResponse("PortUp daemon returned invalid JSON")
             )
           );
         }
-        return Schema.decodeUnknown(ErrorEnvelopeSchema)(body).pipe(
+        return Schema.decodeUnknownEffect(ErrorEnvelopeSchema)(body).pipe(
           Effect.mapError(() =>
             invalidResponse("PortUp daemon returned an invalid error response")
           ),

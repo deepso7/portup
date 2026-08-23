@@ -40,6 +40,18 @@ const runPortup = async (port: number, ...arguments_: string[]) => {
 };
 
 describe("compiled CLI", () => {
+  test("generates help for every command", async () => {
+    const help = await runPortup(4700, "--help");
+
+    expect(help.exitCode).toBe(0);
+    expect(help.stderr).toBe("");
+    expect(help.stdout).toContain("COMMANDS");
+    expect(help.stdout).toContain("add");
+    expect(help.stdout).toContain("daemon");
+    expect(help.stdout).toContain("remove");
+    expect(help.stdout).toContain("status");
+  });
+
   test("round-trips JSON through the daemon", async () => {
     const port = startDaemon();
     const added = await runPortup(

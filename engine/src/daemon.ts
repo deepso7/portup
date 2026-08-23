@@ -1,4 +1,4 @@
-import { Either, Schema } from "effect";
+import { Option, Schema } from "effect";
 
 import { Store } from "./store.ts";
 
@@ -48,15 +48,15 @@ const addService = async (request: Request, store: Store) => {
     );
   }
 
-  const decoded = Schema.decodeUnknownEither(RegistrationSchema)(body);
-  if (Either.isLeft(decoded)) {
+  const decoded = Schema.decodeUnknownOption(RegistrationSchema)(body);
+  if (Option.isNone(decoded)) {
     return errorResponse(
       400,
       "invalid_request",
       "request body must be valid service JSON"
     );
   }
-  const registration = decoded.right;
+  const registration = decoded.value;
   if (!isServiceName(registration.name)) {
     return errorResponse(
       400,
