@@ -93,9 +93,9 @@ Charters:
 | --- | --- |
 | **State** | Invariants, lifecycle, close/reset/retry, event ordering, post-close behavior |
 | **Parse** | Lengths, encodings, fixtures/goldens, validate-before-side-effects |
-| **Security** | Untrusted peers/input, authz, spoofing, expensive work before reject |
+| **Security** | Untrusted input, exposed surface, authz, injection, expensive work before reject |
 | **Flow** | Spins, starvation, deadlines, unbounded/superlinear buffers, error-path leaks |
-| **Verify** | *Missing* tests for new failure modes; CI/fuzz gaps; README/doc lies; AGENTS.md policy |
+| **Verify** | *Missing* tests for new failure modes; CI gaps; README/doc lies; AGENTS.md policy |
 | **Quality** | *Hollow* proof and LLM-shaped test/docs padding; internal no-policy wrappers — not intentional public/layer boundaries |
 
 The pasted shared constraints carry the rest (stay in charter, out-of-diff scope per mode, confidence gate).
