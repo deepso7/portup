@@ -27,6 +27,22 @@ importers:
         specifier: 7.10.6
         version: 7.10.6(oxfmt@0.64.0)(oxlint@1.79.0)
 
+  engine:
+    dependencies:
+      effect:
+        specifier: 3.22.1
+        version: 3.22.1
+    devDependencies:
+      '@types/bun':
+        specifier: 1.4.0
+        version: 1.4.0
+      bun:
+        specifier: 1.4.0
+        version: 1.4.0
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+
   web: {}
 
 packages:
@@ -67,6 +83,70 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
+
+  '@oven/bun-darwin-aarch64@1.4.0':
+    resolution: {integrity: sha512-GCpf8QuFLsyioVawP5HrMxA1ZRBlu6Hq9RNnSc3UTUWAzIxBso9trjoZczw1HdgpqSssFkszfIV2zmOzFTjhkw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@oven/bun-darwin-x64@1.4.0':
+    resolution: {integrity: sha512-cIrhwOr0SPEraewznhC+c/k6TG8bwFn5uZ4EJuXwjiKJLcAF36q7/bGjWkeXSe48JwMcPRUR054JXF7+cRwSSA==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@oven/bun-freebsd-aarch64@1.4.0':
+    resolution: {integrity: sha512-09x7wnjMR6M5KGBDBhVl2CpfoCIQOkVDbPX2KfIhpXv4N6grbWE7dfLPw/Ydi9gaUMGhU7UKhoz444Nu6RCycA==}
+    cpu: [arm64]
+    os: [freebsd]
+
+  '@oven/bun-freebsd-x64@1.4.0':
+    resolution: {integrity: sha512-dRwzti/qJqV1HWplU27iUWUqp+f2DtFSf2yqQKSb+HH2dDOC//Uqd9u/A5h1DMsLszfP5OGP9UwQIKxVwFODaA==}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@oven/bun-linux-aarch64-android@1.4.0':
+    resolution: {integrity: sha512-HpPIxJfDNPBPhiBNMyZoo/dOLijARfsx5j72vNuLtaTvl0Hh7HUculxjsOQ2WSyGoCgqXMEr1Qqjab1im9u1RA==}
+    cpu: [arm64]
+    os: [android]
+
+  '@oven/bun-linux-aarch64-musl@1.4.0':
+    resolution: {integrity: sha512-RUjAAkJ/CdNV++zVxyANWshPc73CECYsfhk0fWAkoJjtywxJ2BwXzI6nopBBDMfs0HS+fhRGn6zGwU8ccxLeJg==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@oven/bun-linux-aarch64@1.4.0':
+    resolution: {integrity: sha512-Y5yAtCbHK6JjprXEtkdklDQFPADgs+CkfcliyY5g4JJ8baGHyQSrfpSkX3XVJ2C+aBLsdwNDdW+oczMsAwx6uA==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@oven/bun-linux-x64-android@1.4.0':
+    resolution: {integrity: sha512-u++KyLlfMn36yWz+AgJs+fZtS46UFDNpSSZhrcitkytONtNwq0X6Q9BDVEFXxYl/+Eec0xme1rb6MgW+U35WeA==}
+    cpu: [x64]
+    os: [android]
+
+  '@oven/bun-linux-x64-musl@1.4.0':
+    resolution: {integrity: sha512-C1Dv+ISL8YKEKM9jAHzNifOcRUoziy6UMxh+yVXjUCP6QnbRhENDHLaIWWkQZJyBLTn0I3xozflorAlHiGzGqA==}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@oven/bun-linux-x64@1.4.0':
+    resolution: {integrity: sha512-Du44zebtPXJujvMLmtIxEQ6ykOhYt7L/Q+YIGVm+Yy+Pj/fpOnq60ggwIpKp/pGAFbYHNiTrA3JTjuZ9MTbZIg==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@oven/bun-windows-aarch64@1.4.0':
+    resolution: {integrity: sha512-FBAYaQpJBP0asgqzL6NFUfjdQqsV+kvTpJ/eWxPKj+RcDgIfPSuE8kvQuPYu5pa8u8JTujYMjmuyvHxVuQsInA==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@oven/bun-windows-x64@1.4.0':
+    resolution: {integrity: sha512-jRKv1NPLznMSZY5BEWciMF7zv0Tiyo2pQSxAJ3w+YWJ6y3VWNJQQQdLlV5Jx8lbOFDrJdrc9dD3GV17k3BP41A==}
+    cpu: [x64]
+    os: [win32]
 
   '@oxfmt/binding-android-arm-eabi@0.64.0':
     resolution: {integrity: sha512-o6uzh/jTOQeAY5TdkAeXdqv7MBRcPxiRA08zrcBtkKj5cSu/FMu0Hl7Q6Fi1KCKyCWZ6lJVjBzdsJvsKltUsGQ==}
@@ -319,6 +399,15 @@ packages:
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
     engines: {node: '>=18'}
 
+  '@standard-schema/spec@1.1.0':
+    resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@types/bun@1.4.0':
+    resolution: {integrity: sha512-K+lZULY23vRgK/CfTjFIV+tyifaNdSMlPh9j+6mQ/cLfpOznLyAuzgV/JQysyECpkBQLVMSyvjlr2fBUSA9wFQ==}
+
+  '@types/node@26.2.0':
+    resolution: {integrity: sha512-5IviulTZeRNp2vAJ514cc/HUlY5nZ9fCbq9DMyC52BrhFZACo3nI0R7qBxhQmo/d27NFe96ur/b7Wwxklda+kg==}
+
   '@typescript/typescript-aix-ppc64@7.0.2':
     resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
     engines: {node: '>=16.20.0'}
@@ -460,6 +549,15 @@ packages:
     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
     engines: {node: '>=8'}
 
+  bun-types@1.4.0:
+    resolution: {integrity: sha512-iIKw23BspnQQYd3prITOBxeUsxBHnwzX6YJfGMuNOZzeNcMmVqzIIVGRm1l69ogaPQmb4wB6BN8mA5bE9YuC5Q==}
+
+  bun@1.4.0:
+    resolution: {integrity: sha512-iRiFkc2W7UVpCyZXO9tod45TP9QCyN19fWqbpeN/jaM/K7uzeHYx/OSPsahMJazGKBgPsnxRt+4Jc43d8BcHZw==}
+    cpu: [arm64, x64]
+    os: [darwin, linux, android, freebsd, win32]
+    hasBin: true
+
   citty@0.2.2:
     resolution: {integrity: sha512-+6vJA3L98yv+IdfKGZHBNiGW5KHn22e/JwID0Strsz8h4S/csAu/OuICwxrg44k5MRiZHWIo8XXuJgQTriRP4w==}
 
@@ -482,6 +580,9 @@ packages:
     resolution: {integrity: sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==}
     engines: {node: '>=0.10.0'}
 
+  effect@3.22.1:
+    resolution: {integrity: sha512-TNoXushmPOBAjJlthF5d2QwnX2xBPEtcNJr5XKNKbRLbDvBcOYkXlYDfvGfSA0zriwLFuCll5MDtNMAdZL17PQ==}
+
   empathic@2.0.1:
     resolution: {integrity: sha512-YGRs8knHhKHVShLkFET/rWAU8kmHbOV5LwN938RHI0pljAJ1Gf6SzXsSmRaEzcXTtOOmVqJ5+WtQPL5uigY50Q==}
     engines: {node: '>=14'}
@@ -493,6 +594,10 @@ packages:
   execa@10.0.1:
     resolution: {integrity: sha512-ge98qjkRK4IB7tL7Ju/6qmm5LHoH1eEMt5FNZrz3f4UIYhF28lggX20z3FaX1sgc67msLEn0N0BscOs29iuwyw==}
     engines: {node: '>=22'}
+
+  fast-check@3.23.2:
+    resolution: {integrity: sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A==}
+    engines: {node: '>=8.0.0'}
 
   fast-glob@3.3.3:
     resolution: {integrity: sha512-7MptL8U0cqcFdzIzwOTHoilX9x5BrNqye7Z/LuC7kCMRio1EMSyqRK3BEAUD7sXRq4iT4AzTVuZdhgQ2TCvYLg==}
@@ -651,6 +756,9 @@ packages:
     resolution: {integrity: sha512-gjVS5hOP+M3wMm5nmNOucbIrqudzs9v/57bWRHQWLYklXqoXKrVfYW2W9+glfGsqtPgpiz5WwyEEB+ksXIx3gQ==}
     engines: {node: '>=18'}
 
+  pure-rand@6.1.0:
+    resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
+
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
@@ -728,6 +836,9 @@ packages:
       oxlint:
         optional: true
 
+  undici-types@8.3.0:
+    resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
+
   unicorn-magic@0.3.0:
     resolution: {integrity: sha512-+QBBXBCvifc56fsbuxZQ6Sic3wqqc3WWaqxs58gvJrcOuN83HGTCwz3oS5phzU9LthRNE9VrJCFCLUgHeeFnfA==}
     engines: {node: '>=18'}
@@ -791,6 +902,42 @@ snapshots:
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
+
+  '@oven/bun-darwin-aarch64@1.4.0':
+    optional: true
+
+  '@oven/bun-darwin-x64@1.4.0':
+    optional: true
+
+  '@oven/bun-freebsd-aarch64@1.4.0':
+    optional: true
+
+  '@oven/bun-freebsd-x64@1.4.0':
+    optional: true
+
+  '@oven/bun-linux-aarch64-android@1.4.0':
+    optional: true
+
+  '@oven/bun-linux-aarch64-musl@1.4.0':
+    optional: true
+
+  '@oven/bun-linux-aarch64@1.4.0':
+    optional: true
+
+  '@oven/bun-linux-x64-android@1.4.0':
+    optional: true
+
+  '@oven/bun-linux-x64-musl@1.4.0':
+    optional: true
+
+  '@oven/bun-linux-x64@1.4.0':
+    optional: true
+
+  '@oven/bun-windows-aarch64@1.4.0':
+    optional: true
+
+  '@oven/bun-windows-x64@1.4.0':
+    optional: true
 
   '@oxfmt/binding-android-arm-eabi@0.64.0':
     optional: true
@@ -910,6 +1057,16 @@ snapshots:
 
   '@sindresorhus/merge-streams@4.0.0': {}
 
+  '@standard-schema/spec@1.1.0': {}
+
+  '@types/bun@1.4.0':
+    dependencies:
+      bun-types: 1.4.0
+
+  '@types/node@26.2.0':
+    dependencies:
+      undici-types: 8.3.0
+
   '@typescript/typescript-aix-ppc64@7.0.2':
     optional: true
 
@@ -984,6 +1141,25 @@ snapshots:
     dependencies:
       fill-range: 7.1.1
 
+  bun-types@1.4.0:
+    dependencies:
+      '@types/node': 26.2.0
+
+  bun@1.4.0:
+    optionalDependencies:
+      '@oven/bun-darwin-aarch64': 1.4.0
+      '@oven/bun-darwin-x64': 1.4.0
+      '@oven/bun-freebsd-aarch64': 1.4.0
+      '@oven/bun-freebsd-x64': 1.4.0
+      '@oven/bun-linux-aarch64': 1.4.0
+      '@oven/bun-linux-aarch64-android': 1.4.0
+      '@oven/bun-linux-aarch64-musl': 1.4.0
+      '@oven/bun-linux-x64': 1.4.0
+      '@oven/bun-linux-x64-android': 1.4.0
+      '@oven/bun-linux-x64-musl': 1.4.0
+      '@oven/bun-windows-aarch64': 1.4.0
+      '@oven/bun-windows-x64': 1.4.0
+
   citty@0.2.2: {}
 
   cli-cursor@5.0.0:
@@ -1000,6 +1176,11 @@ snapshots:
   confbox@0.1.8: {}
 
   deepmerge@4.3.1: {}
+
+  effect@3.22.1:
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      fast-check: 3.23.2
 
   empathic@2.0.1: {}
 
@@ -1019,6 +1200,10 @@ snapshots:
       strip-final-newline: 4.0.0
       which-command: 0.1.0
       yoctocolors: 2.2.0
+
+  fast-check@3.23.2:
+    dependencies:
+      pure-rand: 6.1.0
 
   fast-glob@3.3.3:
     dependencies:
@@ -1199,6 +1384,8 @@ snapshots:
     dependencies:
       parse-ms: 4.0.0
 
+  pure-rand@6.1.0: {}
+
   queue-microtask@1.2.3: {}
 
   resolve.exports@2.0.3: {}
@@ -1290,6 +1477,8 @@ snapshots:
     optionalDependencies:
       oxfmt: 0.64.0
       oxlint: 1.79.0
+
+  undici-types@8.3.0: {}
 
   unicorn-magic@0.3.0: {}
 

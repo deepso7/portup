@@ -2,19 +2,20 @@
 
 PortUp gives local services stable public URLs.
 
-The daemon and CLI are a single Rust binary:
+The daemon and CLI compile to a single executable containing the Bun runtime:
 
 ```sh
-cargo build --manifest-path engine/Cargo.toml
-./engine/target/debug/portup daemon
+pnpm install
+pnpm --dir engine build
+./engine/dist/portup daemon
 ```
 
 In another terminal:
 
 ```sh
-./engine/target/debug/portup add web http://127.0.0.1:3000
-./engine/target/debug/portup status
-./engine/target/debug/portup remove web
+./engine/dist/portup add web http://127.0.0.1:3000
+./engine/dist/portup status
+./engine/dist/portup remove web
 ```
 
 Pass `--json` for machine-readable output. The daemon listens on port 4700 by default; `--port` or `PORTUP_PORT` overrides it.

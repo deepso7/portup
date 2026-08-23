@@ -105,7 +105,7 @@ An ngrok adapter can later follow the same interface for users who prefer its as
 
 ## Implementation
 
-- The daemon and CLI are one Rust binary, built from the cargo project in `engine/`.
+- The daemon and CLI are one standalone executable, built from the Bun project in `engine/`.
 - The dashboard is a TypeScript app in `web/`; its built assets are embedded in the binary and served by the daemon.
 - Distribution is an install script (`curl portup.dev/install.sh | sh`) that installs the portup binary and cloudflared together.
 

@@ -1,5 +1,9 @@
 packages:
+  - engine
   - web
+
+allowBuilds:
+  bun: true
 
 catalog:
   typescript: 7.0.2
