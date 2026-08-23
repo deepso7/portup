@@ -7,8 +7,8 @@
   "author": "",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "check": "ultracite check",
+    "test": "cargo test --manifest-path engine/Cargo.toml",
+    "check": "ultracite check && cargo clippy --manifest-path engine/Cargo.toml --all-targets -- -D warnings",
     "fix": "ultracite fix"
   },
   "devDependencies": {
