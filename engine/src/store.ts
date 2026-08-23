@@ -1,80 +1,90 @@
-import { Database } from "bun:sqlite";
+import { SqliteClient } from "@effect/sql-sqlite-bun";
+import { eq } from "drizzle-orm";
+import { makeWithDefaults } from "drizzle-orm/effect-sqlite-bun";
+import type { EffectSQLiteBunDatabase } from "drizzle-orm/effect-sqlite-bun";
+import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { Effect, ManagedRuntime } from "effect";
 
 import { registeredService } from "./service.ts";
 import type { Service } from "./service.ts";
 
-interface ServiceRow {
-  local_url: string;
-  name: string;
-}
+const services = sqliteTable("services", {
+  localUrl: text("local_url").notNull(),
+  name: text().primaryKey(),
+});
+
+const makeRuntime = (path: string) =>
+  ManagedRuntime.make(SqliteClient.layer({ filename: path }));
 
 export class Store {
-  readonly #database: Database;
+  readonly #database: EffectSQLiteBunDatabase;
+  readonly #runtime: ReturnType<typeof makeRuntime>;
 
   constructor(path: string) {
-    this.#database = new Database(path, { create: true });
-    const version = this.#database
-      .query<{ user_version: number }, []>("PRAGMA user_version")
-      .get()?.user_version;
+    this.#runtime = makeRuntime(path);
+    this.#database = this.#runtime.runSync(makeWithDefaults());
+    const version = this.#runtime.runSync(
+      this.#database.get<{ user_version: number }>("PRAGMA user_version")
+    ).user_version;
 
     if (version === 0) {
-      this.#database.exec(`
-        BEGIN;
-        CREATE TABLE services (
-          name TEXT PRIMARY KEY NOT NULL,
-          local_url TEXT NOT NULL
-        ) STRICT;
-        PRAGMA user_version = 1;
-        COMMIT;
-      `);
+      this.#runtime.runSync(
+        this.#database.transaction((transaction) =>
+          Effect.gen(function* migrate() {
+            yield* transaction.run(`
+              CREATE TABLE services (
+                name TEXT PRIMARY KEY NOT NULL,
+                local_url TEXT NOT NULL
+              ) STRICT
+            `);
+            yield* transaction.run("PRAGMA user_version = 1");
+          })
+        )
+      );
     } else if (version !== 1) {
       throw new Error(`unsupported database schema version ${version}`);
     }
   }
 
   add(name: string, localUrl: string): Service | null {
-    try {
+    const [row] = this.#runtime.runSync(
       this.#database
-        .query("INSERT INTO services (name, local_url) VALUES (?1, ?2)")
-        .run(name, localUrl);
-      return registeredService(name, localUrl);
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("UNIQUE constraint failed")
-      ) {
-        return null;
-      }
-      throw error;
-    }
+        .insert(services)
+        .values({ localUrl, name })
+        .onConflictDoNothing()
+        .returning()
+    );
+    return row ? registeredService(row.name, row.localUrl) : null;
   }
 
   get(name: string): Service | null {
-    const row = this.#database
-      .query<ServiceRow, [string]>(
-        "SELECT name, local_url FROM services WHERE name = ?1"
-      )
-      .get(name);
-    return row ? registeredService(row.name, row.local_url) : null;
+    const [row] = this.#runtime.runSync(
+      this.#database
+        .select()
+        .from(services)
+        .where(eq(services.name, name))
+        .limit(1)
+    );
+    return row ? registeredService(row.name, row.localUrl) : null;
   }
 
   list(): Service[] {
-    return this.#database
-      .query<ServiceRow, []>(
-        "SELECT name, local_url FROM services ORDER BY name"
-      )
-      .all()
-      .map((row) => registeredService(row.name, row.local_url));
+    return this.#runtime
+      .runSync(this.#database.select().from(services).orderBy(services.name))
+      .map((row) => registeredService(row.name, row.localUrl));
   }
 
   remove(name: string): boolean {
-    return (
-      this.#database.query("DELETE FROM services WHERE name = ?1").run(name)
-        .changes === 1
+    const removed = this.#runtime.runSync(
+      this.#database
+        .delete(services)
+        .where(eq(services.name, name))
+        .returning({ name: services.name })
     );
+    return removed.length === 1;
   }
 
   close() {
-    this.#database.close();
+    return this.#runtime.dispose();
   }
 }

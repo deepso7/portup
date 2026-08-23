@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@effect/platform-bun": "4.0.0-rc.111",
+    "@effect/sql-sqlite-bun": "4.0.0-rc.111",
+    "drizzle-orm": "1.0.0-rc.5-169397b",
     "effect": "4.0.0-rc.111"
   },
   "devDependencies": {

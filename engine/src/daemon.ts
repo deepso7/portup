@@ -135,7 +135,7 @@ export const createDaemon = (databasePath: string, port: number): Daemon => {
   });
   if (server.port === undefined) {
     void server.stop(true);
-    store.close();
+    void store.close();
     throw new Error("daemon did not bind a TCP port");
   }
 
@@ -143,7 +143,7 @@ export const createDaemon = (databasePath: string, port: number): Daemon => {
     port: server.port,
     stop: async (closeActiveConnections) => {
       await server.stop(closeActiveConnections);
-      store.close();
+      await store.close();
     },
   };
 };
