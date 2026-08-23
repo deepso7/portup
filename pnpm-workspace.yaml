@@ -1,0 +1,8 @@
+packages:
+  - engine
+  - web
+
+catalog:
+  typescript: 7.0.2
+
+saveExact: true
