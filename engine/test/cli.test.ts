@@ -111,6 +111,32 @@ describe("compiled CLI", () => {
     });
   });
 
+  test("returns a stable JSON error for an invalid port", async () => {
+    const status = await runPortup(0, "--json", "status");
+
+    expect(status.exitCode).not.toBe(0);
+    expect(status.stdout).toBe("");
+    expect(JSON.parse(status.stderr)).toEqual({
+      error: {
+        code: "invalid_port",
+        message: "port must be an integer between 1 and 65535",
+      },
+    });
+  });
+
+  test("returns only JSON when command arguments are invalid", async () => {
+    const add = await runPortup(4700, "--json", "add");
+
+    expect(add.exitCode).not.toBe(0);
+    expect(add.stdout).toBe("");
+    expect(JSON.parse(add.stderr)).toEqual({
+      error: {
+        code: "invalid_arguments",
+        message: "invalid command arguments",
+      },
+    });
+  });
+
   test("runs a foreground daemon on the environment port", async () => {
     const port = startDaemon();
     const reservation = servers.pop();

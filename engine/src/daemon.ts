@@ -93,26 +93,35 @@ const route = (
   if (request.method === "GET" && pathname === "/api/services") {
     return Response.json({ services: store.list() });
   }
-  if (request.method === "GET" && pathname.startsWith("/api/services/")) {
-    const name = decodeURIComponent(pathname.slice("/api/services/".length));
-    const service = store.get(name);
-    return service
-      ? Response.json(service)
-      : errorResponse(
-          404,
-          "service_not_found",
-          `service '${name}' is not registered`
-        );
-  }
-  if (request.method === "DELETE" && pathname.startsWith("/api/services/")) {
-    const name = decodeURIComponent(pathname.slice("/api/services/".length));
-    return store.remove(name)
-      ? Response.json({ name, removed: true })
-      : errorResponse(
-          404,
-          "service_not_found",
-          `service '${name}' is not registered`
-        );
+  if (
+    (request.method === "GET" || request.method === "DELETE") &&
+    pathname.startsWith("/api/services/")
+  ) {
+    let name: string;
+    try {
+      name = decodeURIComponent(pathname.slice("/api/services/".length));
+    } catch {
+      return errorResponse(
+        400,
+        "invalid_request",
+        "service path must use valid percent encoding"
+      );
+    }
+
+    if (request.method === "GET") {
+      const service = store.get(name);
+      if (service) {
+        return Response.json(service);
+      }
+    } else if (store.remove(name)) {
+      return Response.json({ name, removed: true });
+    }
+
+    return errorResponse(
+      404,
+      "service_not_found",
+      `service '${name}' is not registered`
+    );
   }
   return errorResponse(400, "invalid_request", "unknown route");
 };

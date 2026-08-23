@@ -3,8 +3,8 @@ import { homedir } from "node:os";
 import path from "node:path";
 
 import { BunRuntime, BunServices } from "@effect/platform-bun";
-import { Effect, Option } from "effect";
-import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Console, Effect, Option } from "effect";
+import { Argument, CliError, Command, Flag } from "effect/unstable/cli";
 
 import { clientLayer, PortupClient } from "./client.ts";
 import type { RemoveResult, ServiceList } from "./client.ts";
@@ -130,8 +130,12 @@ const withRuntimeOptions = <A>(
 ) =>
   Effect.gen(function* resolveCommandOptions() {
     const flags = yield* portup;
-    const options = yield* resolveOptions(flags);
-    yield* runHandled(options, run(options));
+    yield* resolveOptions(flags).pipe(
+      Effect.matchEffect({
+        onFailure: handleFailure(flags.json),
+        onSuccess: (options) => runHandled(options, run(options)),
+      })
+    );
   });
 
 const daemon = Command.make("daemon", {}, () =>
@@ -228,14 +232,43 @@ const command = portup.pipe(
   Command.withSubcommands([daemon, add, remove, status])
 );
 
-const cli = Command.run(command, { version: VERSION });
-
 if (import.meta.main) {
-  cli.pipe(
+  const arguments_ = process.argv.slice(2);
+  const json = arguments_.includes("--json");
+  const printsCliOutput = arguments_.some((argument) =>
+    ["--help", "-h", "--version", "-v", "--completions", "--wizard"].includes(
+      argument
+    )
+  );
+  const silentConsole: Console.Console = Object.assign(Object.create(console), {
+    error: () => null,
+    log: () => null,
+  });
+  const cli = Command.run(command, { renderErrors: !json, version: VERSION });
+  const program =
+    json && !printsCliOutput
+      ? cli.pipe(Effect.provideService(Console.Console, silentConsole))
+      : cli;
+
+  program.pipe(
     Effect.provide(BunServices.layer),
     Effect.matchEffect({
-      onFailure: () =>
+      onFailure: (error) =>
         Effect.sync(() => {
+          if (
+            json &&
+            CliError.isCliError(error) &&
+            (error._tag !== "ShowHelp" || error.errors.length > 0)
+          ) {
+            console.error(
+              JSON.stringify({
+                error: {
+                  code: "invalid_arguments",
+                  message: "invalid command arguments",
+                },
+              })
+            );
+          }
           process.exitCode = 1;
         }),
       onSuccess: Effect.succeed,

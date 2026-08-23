@@ -169,4 +169,17 @@ describe("daemon HTTP interface", () => {
       },
     });
   });
+
+  test("returns a stable error for malformed service paths", async () => {
+    const baseUrl = startDaemon();
+    const response = await fetch(`${baseUrl}/api/services/%zz`);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        code: "invalid_request",
+        message: "service path must use valid percent encoding",
+      },
+    });
+  });
 });
