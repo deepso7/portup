@@ -3,8 +3,11 @@ import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { Schema } from "effect";
+
 import { createDaemon } from "../src/daemon.ts";
 import type { Daemon } from "../src/daemon.ts";
+import { ServiceSchema } from "../src/service.ts";
 
 const executable = path.join(import.meta.dir, "../dist/portup");
 const servers: Daemon[] = [];
@@ -92,7 +95,9 @@ describe("compiled CLI", () => {
     );
     expect(added.exitCode).toBe(0);
     expect(added.stderr).toBe("");
-    const service = JSON.parse(added.stdout);
+    const service = Schema.decodeUnknownSync(ServiceSchema)(
+      JSON.parse(added.stdout)
+    );
     expect(service).toMatchObject({
       localUrl: "http://127.0.0.1:3000",
       name: "api",

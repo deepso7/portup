@@ -2,6 +2,7 @@
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
+    "isolatedModules": true,
     "lib": ["ESNext"],
     "module": "Preserve",
     "moduleDetection": "force",
@@ -9,10 +10,17 @@
     "noEmit": true,
     "noImplicitOverride": true,
     "noUncheckedIndexedAccess": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
     "target": "ESNext",
-    "types": ["bun"]
+    "types": ["bun"],
+    "verbatimModuleSyntax": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service"
+      }
+    ]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": ["reset.d.ts", "src/**/*.ts", "test/**/*.ts"]
 }
