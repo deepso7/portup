@@ -298,9 +298,26 @@ const command = portup.pipe(
   Command.withSubcommands([daemon, add, remove, status])
 );
 
+const falseBooleanValues = new Set(["false", "no", "off", "0", "n"]);
+
+const requestsJsonOutput = (arguments_: readonly string[]) => {
+  for (const [index, argument] of arguments_.entries()) {
+    if (argument === "--no-json") {
+      return false;
+    }
+    if (argument === "--json") {
+      return !falseBooleanValues.has(arguments_[index + 1] ?? "");
+    }
+    if (argument.startsWith("--json=")) {
+      return !falseBooleanValues.has(argument.slice("--json=".length));
+    }
+  }
+  return false;
+};
+
 if (import.meta.main) {
   const arguments_ = process.argv.slice(2);
-  const json = arguments_.includes("--json");
+  const json = requestsJsonOutput(arguments_);
   const printsCliOutput = arguments_.some((argument) =>
     ["--help", "-h", "--version", "-v", "--completions", "--wizard"].includes(
       argument

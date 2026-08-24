@@ -239,6 +239,15 @@ describe("compiled CLI", () => {
     });
   });
 
+  test("honors an explicit false JSON flag when arguments are invalid", async () => {
+    const add = await runPortup(4700, "--json", "false", "add");
+
+    expect(add.exitCode).not.toBe(0);
+    expect(add.stdout).toContain("USAGE");
+    expect(add.stderr).toContain("Missing required argument: name");
+    expect(add.stderr).not.toContain('"invalid_arguments"');
+  });
+
   test("runs a foreground daemon on the environment port", async () => {
     const port = await startDaemon();
     const reservation = servers.pop();
