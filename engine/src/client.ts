@@ -37,24 +37,47 @@ export class PortupClient extends Context.Service<
 const invalidResponse = (message: string) =>
   new PortupFailure({ code: "invalid_daemon_response", message });
 
-export const clientLayer = (port: number) => {
+export const clientLayer = (port: number, token?: string) => {
   const address = `http://127.0.0.1:${port}`;
   const request = <T>(
     schema: Schema.ConstraintDecoder<T, never>,
     path: string,
     init?: RequestInit
-  ) =>
-    Effect.tryPromise({
-      catch: () =>
-        new PortupFailure({
-          code: "daemon_not_running",
-          message: `PortUp daemon is not running at ${address}`,
-        }),
-      try: () =>
-        fetch(`${address}${path}`, {
-          ...init,
-          signal: AbortSignal.timeout(5000),
-        }),
+  ) => {
+    const timeoutFailure = new PortupFailure({
+      code: "daemon_timeout",
+      message: `PortUp daemon at ${address} did not respond within 5 seconds`,
+    });
+    return Effect.tryPromise({
+      catch: (error) =>
+        error === timeoutFailure ||
+        (error instanceof DOMException &&
+          (error.name === "AbortError" || error.name === "TimeoutError"))
+          ? timeoutFailure
+          : new PortupFailure({
+              code: "daemon_not_running",
+              message: `PortUp daemon is not running at ${address}`,
+            }),
+      try: async () => {
+        const headers = new Headers(init?.headers);
+        if (token) {
+          headers.set("authorization", `Bearer ${token}`);
+        }
+        const controller = new AbortController();
+        const timeout = setTimeout(
+          () => controller.abort(timeoutFailure),
+          5000
+        );
+        try {
+          return await fetch(`${address}${path}`, {
+            ...init,
+            headers,
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+      },
     }).pipe(
       Effect.flatMap((response) =>
         Effect.tryPromise({
@@ -78,6 +101,7 @@ export const clientLayer = (port: number) => {
         );
       })
     );
+  };
 
   return Layer.succeed(PortupClient, {
     add: (name, localUrl) =>

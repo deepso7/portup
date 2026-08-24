@@ -1,6 +1,6 @@
 # portup
 
-PortUp gives local services stable public URLs.
+PortUp registers, lists, and removes local services through a local daemon.
 
 The daemon and CLI compile to a single executable containing the Bun runtime:
 

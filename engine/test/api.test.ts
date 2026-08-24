@@ -21,13 +21,22 @@ const startDaemon = () => {
   directories.push(directory);
   const server = createDaemon(path.join(directory, "portup.db"), 0);
   servers.push(server);
-  return `http://127.0.0.1:${server.port}`;
+  return server;
 };
+
+const request = (server: Daemon, pathname: string, init: RequestInit = {}) =>
+  fetch(`http://127.0.0.1:${server.port}${pathname}`, {
+    ...init,
+    headers: {
+      ...init.headers,
+      authorization: `Bearer ${server.token}`,
+    },
+  });
 
 describe("daemon HTTP interface", () => {
   test("registers a service and returns its full status", async () => {
-    const baseUrl = startDaemon();
-    const registration = await fetch(`${baseUrl}/api/services`, {
+    const server = startDaemon();
+    const registration = await request(server, "/api/services", {
       body: JSON.stringify({
         localUrl: "http://127.0.0.1:3000",
         name: "api",
@@ -49,19 +58,55 @@ describe("daemon HTTP interface", () => {
       tunnelStatus: null,
     });
 
-    const status = await fetch(`${baseUrl}/api/services/api`);
+    const status = await request(server, "/api/services/api");
     expect(status.status).toBe(200);
     expect(await status.json()).toEqual(created);
   });
 
+  test("requires a bearer token and a loopback Host header", async () => {
+    const server = startDaemon();
+    const baseUrl = `http://127.0.0.1:${server.port}`;
+
+    const unauthenticated = await fetch(`${baseUrl}/api/services`);
+    expect(unauthenticated.status).toBe(401);
+    expect(await unauthenticated.json()).toEqual({
+      error: {
+        code: "unauthorized",
+        message: "a valid daemon bearer token is required",
+      },
+    });
+
+    const rebound = await fetch(`${baseUrl}/api/services`, {
+      headers: {
+        authorization: `Bearer ${server.token}`,
+        host: "evil.example",
+      },
+    });
+    expect(rebound.status).toBe(403);
+    expect(await rebound.json()).toEqual({
+      error: {
+        code: "invalid_host",
+        message: "Host must identify a loopback address",
+      },
+    });
+
+    const disguisedHost = await fetch(`${baseUrl}/api/services`, {
+      headers: {
+        authorization: `Bearer ${server.token}`,
+        host: "evil.example@127.0.0.1",
+      },
+    });
+    expect(disguisedHost.status).toBe(403);
+  });
+
   test("lists and removes several services independently", async () => {
-    const baseUrl = startDaemon();
+    const server = startDaemon();
     const registrations = await Promise.all(
       [
         ["web", "http://127.0.0.1:3000"],
         ["api", "http://127.0.0.1:4000"],
       ].map(([name, localUrl]) =>
-        fetch(`${baseUrl}/api/services`, {
+        request(server, "/api/services", {
           body: JSON.stringify({ localUrl, name }),
           headers: { "content-type": "application/json" },
           method: "POST",
@@ -70,19 +115,22 @@ describe("daemon HTTP interface", () => {
     );
     expect(registrations.every(({ status }) => status === 201)).toBe(true);
 
-    const list = await fetch(`${baseUrl}/api/services`);
+    const list = await request(server, "/api/services");
     expect(list.status).toBe(200);
     expect(await list.json()).toMatchObject({
-      services: [{ name: "api" }, { name: "web" }],
+      services: [
+        { localUrl: "http://127.0.0.1:4000", name: "api" },
+        { localUrl: "http://127.0.0.1:3000", name: "web" },
+      ],
     });
 
-    const removed = await fetch(`${baseUrl}/api/services/api`, {
+    const removed = await request(server, "/api/services/api", {
       method: "DELETE",
     });
     expect(removed.status).toBe(200);
     expect(await removed.json()).toEqual({ name: "api", removed: true });
 
-    const missing = await fetch(`${baseUrl}/api/services/api`);
+    const missing = await request(server, "/api/services/api");
     expect(missing.status).toBe(404);
     expect(await missing.json()).toEqual({
       error: {
@@ -91,9 +139,10 @@ describe("daemon HTTP interface", () => {
       },
     });
 
-    const remaining = await fetch(`${baseUrl}/api/services/web`);
+    const remaining = await request(server, "/api/services/web");
     expect(remaining.status).toBe(200);
     expect(await remaining.json()).toMatchObject({
+      localUrl: "http://127.0.0.1:3000",
       name: "web",
     });
   });
@@ -104,25 +153,20 @@ describe("daemon HTTP interface", () => {
     const databasePath = path.join(directory, "portup.db");
     const first = createDaemon(databasePath, 0);
 
-    const registration = await fetch(
-      `http://127.0.0.1:${first.port}/api/services`,
-      {
-        body: JSON.stringify({
-          localUrl: "http://127.0.0.1:3000",
-          name: "api",
-        }),
-        headers: { "content-type": "application/json" },
-        method: "POST",
-      }
-    );
+    const registration = await request(first, "/api/services", {
+      body: JSON.stringify({
+        localUrl: "http://127.0.0.1:3000",
+        name: "api",
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
     expect(registration.status).toBe(201);
     await first.stop(true);
 
     const second = createDaemon(databasePath, 0);
     servers.push(second);
-    const status = await fetch(
-      `http://127.0.0.1:${second.port}/api/services/api`
-    );
+    const status = await request(second, "/api/services/api");
     expect(status.status).toBe(200);
     expect(await status.json()).toMatchObject({
       localUrl: "http://127.0.0.1:3000",
@@ -131,32 +175,44 @@ describe("daemon HTTP interface", () => {
   });
 
   test("returns stable validation and duplicate errors", async () => {
-    const baseUrl = startDaemon();
+    const server = startDaemon();
+    const invalidRegistrations = [
+      {
+        body: { localUrl: "http://127.0.0.1:3000", name: "Bad Name" },
+        error: {
+          code: "invalid_service_name",
+          message: "service name must be a lowercase DNS label",
+        },
+      },
+      {
+        body: { localUrl: "not a URL", name: "api" },
+        error: {
+          code: "invalid_local_url",
+          message:
+            "local URL must use http or https and a loopback host with a usable port",
+        },
+      },
+    ];
+
     await Promise.all(
-      [
-        [
-          { localUrl: "http://127.0.0.1:3000", name: "Bad Name" },
-          "invalid_service_name",
-        ],
-        [{ localUrl: "not a URL", name: "api" }, "invalid_local_url"],
-      ].map(async ([body, code]) => {
-        const response = await fetch(`${baseUrl}/api/services`, {
+      invalidRegistrations.map(async ({ body, error }) => {
+        const response = await request(server, "/api/services", {
           body: JSON.stringify(body),
           headers: { "content-type": "application/json" },
           method: "POST",
         });
         expect(response.status).toBe(400);
-        expect(await response.json()).toMatchObject({ error: { code } });
+        expect(await response.json()).toEqual({ error });
       })
     );
 
     const body = { localUrl: "http://127.0.0.1:3000", name: "api" };
-    await fetch(`${baseUrl}/api/services`, {
+    await request(server, "/api/services", {
       body: JSON.stringify(body),
       headers: { "content-type": "application/json" },
       method: "POST",
     });
-    const duplicate = await fetch(`${baseUrl}/api/services`, {
+    const duplicate = await request(server, "/api/services", {
       body: JSON.stringify(body),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -170,16 +226,57 @@ describe("daemon HTTP interface", () => {
     });
   });
 
-  test("returns a stable error for malformed service paths", async () => {
-    const baseUrl = startDaemon();
-    const response = await fetch(`${baseUrl}/api/services/%zz`);
+  test("only registers usable loopback HTTP URLs", async () => {
+    const server = startDaemon();
+    const rejectedUrls = [
+      "http://evil.example:3000",
+      "http://169.254.169.254/latest/meta-data",
+      "http://192.168.1.10:3000",
+      "http://127.0.0.1:0",
+    ];
 
-    expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({
+    await Promise.all(
+      rejectedUrls.map(async (localUrl, index) => {
+        const response = await request(server, "/api/services", {
+          body: JSON.stringify({ localUrl, name: `service-${index}` }),
+          headers: { "content-type": "application/json" },
+          method: "POST",
+        });
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({
+          error: {
+            code: "invalid_local_url",
+            message:
+              "local URL must use http or https and a loopback host with a usable port",
+          },
+        });
+      })
+    );
+  });
+
+  test("returns stable errors for malformed and empty service paths", async () => {
+    const server = startDaemon();
+    const malformed = await request(server, "/api/services/%zz");
+
+    expect(malformed.status).toBe(400);
+    expect(await malformed.json()).toEqual({
       error: {
         code: "invalid_request",
         message: "service path must use valid percent encoding",
       },
     });
+
+    await Promise.all(
+      ["GET", "DELETE"].map(async (method) => {
+        const empty = await request(server, "/api/services/", { method });
+        expect(empty.status).toBe(400);
+        expect(await empty.json()).toEqual({
+          error: {
+            code: "invalid_request",
+            message: "service path must contain a valid service name",
+          },
+        });
+      })
+    );
   });
 });

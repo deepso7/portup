@@ -1,4 +1,5 @@
-import { mkdirSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -17,6 +18,7 @@ const VERSION = "0.0.1";
 interface RuntimeOptions {
   json: boolean;
   port: number;
+  token?: string;
 }
 
 interface RuntimeFlags {
@@ -47,6 +49,60 @@ const invalidPort = () =>
     message: "port must be an integer between 1 and 65535",
   });
 
+const databasePath = () => {
+  if (process.env.PORTUP_DB_PATH) {
+    return process.env.PORTUP_DB_PATH;
+  }
+  const dataDirectory =
+    process.platform === "win32"
+      ? (process.env.APPDATA ?? path.join(homedir(), "AppData", "Roaming"))
+      : (process.env.XDG_DATA_HOME ?? path.join(homedir(), ".local", "share"));
+  return path.join(dataDirectory, "portup", "portup.db");
+};
+
+const tokenPath = (database: string) => `${database}.token`;
+
+const readToken = (database: string) => {
+  try {
+    const token = readFileSync(tokenPath(database), "utf-8").trim();
+    if (!token) {
+      throw new Error(`PortUp token file is empty: ${tokenPath(database)}`);
+    }
+    return token;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+};
+
+const daemonToken = (database: string) => {
+  if (process.env.PORTUP_TOKEN) {
+    return process.env.PORTUP_TOKEN;
+  }
+  const existing = readToken(database);
+  if (existing) {
+    chmodSync(tokenPath(database), 0o600);
+    return existing;
+  }
+  const token = randomBytes(32).toString("base64url");
+  try {
+    writeFileSync(tokenPath(database), token, { flag: "wx", mode: 0o600 });
+    return token;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "EEXIST") {
+      const concurrentToken = readToken(database);
+      if (!concurrentToken) {
+        throw error;
+      }
+      chmodSync(tokenPath(database), 0o600);
+      return concurrentToken;
+    }
+    throw error;
+  }
+};
+
 const resolveOptions = (
   flags: RuntimeFlags
 ): Effect.Effect<RuntimeOptions, PortupFailure> =>
@@ -60,26 +116,22 @@ const resolveOptions = (
           }),
     try: () => {
       const portText = process.env.PORTUP_PORT ?? "4700";
+      if (Option.isNone(flags.port) && !/^\d+$/u.test(portText)) {
+        throw invalidPort();
+      }
       const port = Option.isSome(flags.port)
         ? flags.port.value
-        : Number(portText);
+        : Math.trunc(Number(portText));
       if (!Number.isInteger(port) || port < 1 || port > 65_535) {
         throw invalidPort();
       }
-      return { json: flags.json, port };
+      return {
+        json: flags.json,
+        port,
+        token: process.env.PORTUP_TOKEN ?? readToken(databasePath()),
+      };
     },
   });
-
-const databasePath = () => {
-  if (process.env.PORTUP_DB_PATH) {
-    return process.env.PORTUP_DB_PATH;
-  }
-  const dataDirectory =
-    process.platform === "win32"
-      ? (process.env.APPDATA ?? path.join(homedir(), "AppData", "Roaming"))
-      : (process.env.XDG_DATA_HOME ?? path.join(homedir(), ".local", "share"));
-  return path.join(dataDirectory, "portup", "portup.db");
-};
 
 const output = (value: string) => Effect.sync(() => console.log(value));
 
@@ -111,7 +163,7 @@ const runHandled = <A>(
   program: Effect.Effect<A, PortupFailure, PortupClient>
 ) =>
   program.pipe(
-    Effect.provide(clientLayer(options.port)),
+    Effect.provide(clientLayer(options.port, options.token)),
     Effect.matchEffect({
       onFailure: handleFailure(options.json),
       onSuccess: Effect.succeed,
@@ -120,7 +172,7 @@ const runHandled = <A>(
 
 const portup = Command.make("portup").pipe(
   Command.withSharedFlags(runtimeFlags),
-  Command.withDescription("Share local services through stable public URLs")
+  Command.withDescription("Manage local service registrations")
 );
 
 const withRuntimeOptions = <A>(
@@ -149,8 +201,18 @@ const daemon = Command.make("daemon", {}, () =>
           }),
         try: () => {
           const database = databasePath();
-          mkdirSync(path.dirname(database), { recursive: true });
-          return createDaemon(database, options.port);
+          const directory = path.dirname(database);
+          const createdDirectory = mkdirSync(directory, {
+            mode: 0o700,
+            recursive: true,
+          });
+          if (!process.env.PORTUP_DB_PATH || createdDirectory !== undefined) {
+            chmodSync(directory, 0o700);
+          }
+          // Secure the file before SQLite opens it, including startup failures.
+          writeFileSync(database, "", { flag: "a", mode: 0o600 });
+          chmodSync(database, 0o600);
+          return createDaemon(database, options.port, daemonToken(database));
         },
       }),
       (server) =>

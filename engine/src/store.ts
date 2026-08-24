@@ -14,7 +14,13 @@ const services = sqliteTable("services", {
 });
 
 const makeRuntime = (path: string) =>
-  ManagedRuntime.make(SqliteClient.layer({ filename: path }));
+  ManagedRuntime.make(
+    SqliteClient.layer({
+      // bun:sqlite is synchronous, so waiting on a lock blocks the daemon.
+      busyTimeout: 0,
+      filename: path,
+    })
+  );
 
 export class Store {
   readonly #database: EffectSQLiteBunDatabase;
@@ -22,27 +28,32 @@ export class Store {
 
   constructor(path: string) {
     this.#runtime = makeRuntime(path);
-    this.#database = this.#runtime.runSync(makeWithDefaults());
-    const version = this.#runtime.runSync(
-      this.#database.get<{ user_version: number }>("PRAGMA user_version")
-    ).user_version;
+    try {
+      this.#database = this.#runtime.runSync(makeWithDefaults());
+      const version = this.#runtime.runSync(
+        this.#database.get<{ user_version: number }>("PRAGMA user_version")
+      ).user_version;
 
-    if (version === 0) {
-      this.#runtime.runSync(
-        this.#database.transaction((transaction) =>
-          Effect.gen(function* migrate() {
-            yield* transaction.run(`
-              CREATE TABLE services (
-                name TEXT PRIMARY KEY NOT NULL,
-                local_url TEXT NOT NULL
-              ) STRICT
-            `);
-            yield* transaction.run("PRAGMA user_version = 1");
-          })
-        )
-      );
-    } else if (version !== 1) {
-      throw new Error(`unsupported database schema version ${version}`);
+      if (version === 0) {
+        this.#runtime.runSync(
+          this.#database.transaction((transaction) =>
+            Effect.gen(function* migrate() {
+              yield* transaction.run(`
+                CREATE TABLE services (
+                  name TEXT PRIMARY KEY NOT NULL,
+                  local_url TEXT NOT NULL
+                ) STRICT
+              `);
+              yield* transaction.run("PRAGMA user_version = 1");
+            })
+          )
+        );
+      } else if (version !== 1) {
+        throw new Error(`unsupported database schema version ${version}`);
+      }
+    } catch (error) {
+      this.close();
+      throw error;
     }
   }
 
@@ -84,7 +95,7 @@ export class Store {
     return removed.length === 1;
   }
 
-  close() {
-    return this.#runtime.dispose();
+  close(): void {
+    this.#runtime.runSync(this.#runtime.disposeEffect);
   }
 }

@@ -4,6 +4,7 @@ packages:
 
 allowBuilds:
   bun: true
+  msgpackr-extract: false
 
 catalog:
   typescript: 7.0.2
