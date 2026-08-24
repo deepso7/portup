@@ -24,10 +24,10 @@ afterEach(async () => {
   }
 });
 
-const startDaemon = () => {
+const startDaemon = async () => {
   const directory = mkdtempSync(path.join(tmpdir(), "portup-"));
   directories.push(directory);
-  const server = createDaemon(path.join(directory, "portup.db"), 0);
+  const server = await createDaemon(path.join(directory, "portup.db"), 0);
   servers.push(server);
   tokens.set(server.port, server.token);
   return server.port;
@@ -85,7 +85,7 @@ describe("compiled CLI", () => {
   });
 
   test("round-trips JSON through the daemon", async () => {
-    const port = startDaemon();
+    const port = await startDaemon();
     const added = await runPortup(
       port,
       "--json",
@@ -118,7 +118,7 @@ describe("compiled CLI", () => {
   });
 
   test("uses human-readable output by default", async () => {
-    const port = startDaemon();
+    const port = await startDaemon();
     const added = await runPortup(port, "add", "web", "http://127.0.0.1:3000");
 
     expect(added.exitCode).toBe(0);
@@ -127,7 +127,7 @@ describe("compiled CLI", () => {
   });
 
   test("returns a stable JSON error when the daemon is down", async () => {
-    const port = startDaemon();
+    const port = await startDaemon();
     const server = servers.pop();
     if (!server) {
       throw new Error("test daemon was not started");
@@ -171,7 +171,7 @@ describe("compiled CLI", () => {
   }, 7000);
 
   test("preserves an HTTP error envelope from the daemon", async () => {
-    const port = startDaemon();
+    const port = await startDaemon();
     const first = await runPortup(
       port,
       "--json",
@@ -240,7 +240,7 @@ describe("compiled CLI", () => {
   });
 
   test("runs a foreground daemon on the environment port", async () => {
-    const port = startDaemon();
+    const port = await startDaemon();
     const reservation = servers.pop();
     if (!reservation) {
       throw new Error("test daemon was not started");

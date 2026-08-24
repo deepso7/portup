@@ -16,10 +16,10 @@ afterEach(async () => {
   }
 });
 
-const startDaemon = () => {
+const startDaemon = async () => {
   const directory = mkdtempSync(path.join(tmpdir(), "portup-"));
   directories.push(directory);
-  const server = createDaemon(path.join(directory, "portup.db"), 0);
+  const server = await createDaemon(path.join(directory, "portup.db"), 0);
   servers.push(server);
   return server;
 };
@@ -35,7 +35,7 @@ const request = (server: Daemon, pathname: string, init: RequestInit = {}) =>
 
 describe("daemon HTTP interface", () => {
   test("registers a service and returns its full status", async () => {
-    const server = startDaemon();
+    const server = await startDaemon();
     const registration = await request(server, "/api/services", {
       body: JSON.stringify({
         localUrl: "http://127.0.0.1:3000",
@@ -64,7 +64,7 @@ describe("daemon HTTP interface", () => {
   });
 
   test("requires a bearer token and a loopback Host header", async () => {
-    const server = startDaemon();
+    const server = await startDaemon();
     const baseUrl = `http://127.0.0.1:${server.port}`;
 
     const unauthenticated = await fetch(`${baseUrl}/api/services`);
@@ -100,7 +100,7 @@ describe("daemon HTTP interface", () => {
   });
 
   test("lists and removes several services independently", async () => {
-    const server = startDaemon();
+    const server = await startDaemon();
     const registrations = await Promise.all(
       [
         ["web", "http://127.0.0.1:3000"],
@@ -151,7 +151,7 @@ describe("daemon HTTP interface", () => {
     const directory = mkdtempSync(path.join(tmpdir(), "portup-"));
     directories.push(directory);
     const databasePath = path.join(directory, "portup.db");
-    const first = createDaemon(databasePath, 0);
+    const first = await createDaemon(databasePath, 0);
 
     const registration = await request(first, "/api/services", {
       body: JSON.stringify({
@@ -164,7 +164,7 @@ describe("daemon HTTP interface", () => {
     expect(registration.status).toBe(201);
     await first.stop(true);
 
-    const second = createDaemon(databasePath, 0);
+    const second = await createDaemon(databasePath, 0);
     servers.push(second);
     const status = await request(second, "/api/services/api");
     expect(status.status).toBe(200);
@@ -175,7 +175,7 @@ describe("daemon HTTP interface", () => {
   });
 
   test("returns stable validation and duplicate errors", async () => {
-    const server = startDaemon();
+    const server = await startDaemon();
     const invalidRegistrations = [
       {
         body: { localUrl: "http://127.0.0.1:3000", name: "Bad Name" },
@@ -227,7 +227,7 @@ describe("daemon HTTP interface", () => {
   });
 
   test("only registers usable loopback HTTP URLs", async () => {
-    const server = startDaemon();
+    const server = await startDaemon();
     const rejectedUrls = [
       "http://evil.example:3000",
       "http://169.254.169.254/latest/meta-data",
@@ -255,7 +255,7 @@ describe("daemon HTTP interface", () => {
   });
 
   test("returns stable errors for malformed and empty service paths", async () => {
-    const server = startDaemon();
+    const server = await startDaemon();
     const malformed = await request(server, "/api/services/%zz");
 
     expect(malformed.status).toBe(400);

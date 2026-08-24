@@ -193,13 +193,13 @@ const withRuntimeOptions = <A>(
 const daemon = Command.make("daemon", {}, () =>
   withRuntimeOptions((options) =>
     Effect.acquireUseRelease(
-      Effect.try({
+      Effect.tryPromise({
         catch: (error) =>
           new PortupFailure({
             code: "internal_error",
             message: error instanceof Error ? error.message : "PortUp failed",
           }),
-        try: () => {
+        try: async () => {
           const database = databasePath();
           const directory = path.dirname(database);
           const createdDirectory = mkdirSync(directory, {
@@ -212,7 +212,11 @@ const daemon = Command.make("daemon", {}, () =>
           // Secure the file before SQLite opens it, including startup failures.
           writeFileSync(database, "", { flag: "a", mode: 0o600 });
           chmodSync(database, 0o600);
-          return createDaemon(database, options.port, daemonToken(database));
+          return await createDaemon(
+            database,
+            options.port,
+            daemonToken(database)
+          );
         },
       }),
       (server) =>
