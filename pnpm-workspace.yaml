@@ -2,6 +2,10 @@ packages:
   - engine
   - web
 
+allowBuilds:
+  bun: true
+  msgpackr-extract: true
+
 catalog:
   typescript: 7.0.2
 

@@ -7,8 +7,8 @@
   "author": "",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "check": "ultracite check",
+    "test": "pnpm --dir engine test",
+    "check": "ultracite check && pnpm --dir engine check",
     "fix": "ultracite fix"
   },
   "devDependencies": {

@@ -1,19 +1,24 @@
 {
-  "name": "engine",
+  "name": "@portup/engine",
   "version": "0.0.1",
-  "description": "",
-  "keywords": [],
-  "license": "ISC",
-  "author": "",
+  "private": true,
   "type": "module",
-  "main": "src/index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "bun build --compile --minify --outfile dist/portup src/main.ts",
+    "check": "tsc --noEmit",
+    "test": "bun run build && bun test"
+  },
+  "dependencies": {
+    "@effect/platform-bun": "4.0.0-rc.111",
+    "@effect/sql-sqlite-bun": "4.0.0-rc.111",
+    "drizzle-orm": "1.0.0-rc.5-169397b",
+    "effect": "4.0.0-rc.111"
   },
   "devDependencies": {
     "@effect/language-service": "0.87.2",
     "@total-typescript/ts-reset": "0.6.1",
-    "@types/node": "26.2.0",
+    "@types/bun": "1.4.0",
+    "bun": "1.4.0",
     "typescript": "catalog:"
   }
 }
